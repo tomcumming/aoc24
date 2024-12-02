@@ -1,7 +1,7 @@
 pub fn day2(part_two: bool) {
     let ls = std::io::stdin().lines().map(|l| l.unwrap());
     let res = if part_two {
-        todo!();
+        day2_part2(ls)
     } else {
         day2_part1(ls)
     };
@@ -17,22 +17,53 @@ fn parse_input(ls: impl Iterator<Item = String>) -> Vec<Vec<i32>> {
     .collect()
 }
 
-fn pairs<'a, A: Sized + Clone>(xs: &'a [A]) -> impl 'a + Iterator<Item = (A, A)> {
-    (0..(xs.len() - 1)).map(move |i| (xs[i].clone(), xs[i + 1].clone()))
+fn safe_pair(dir: i32, a: i32, b: i32) -> bool {
+    let delta = b - a;
+    let m = i32::abs(delta);
+    i32::signum(delta) == dir && m <= 3 && m >= 1
 }
 
-fn safe(dir: i32, ns: &[i32]) -> bool {
-    pairs(ns).map(|(x, y)| (x - y)).all(|delta| {
-        let m = i32::abs(delta);
-        i32::signum(delta) == dir && m <= 3 && m >= 1
-    })
+fn no_skips(dir: i32, mut ns: &[i32]) -> bool {
+    loop {
+        match ns {
+            [a, b, ..] if safe_pair(dir, *a, *b) => {
+                ns = &ns[1..];
+            }
+            _ => return ns.len() <= 1,
+        }
+    }
 }
 
-fn day2_part1(ls: impl Iterator<Item = String>) -> i32 {
+fn one_skip(dir: i32, ns: &[i32]) -> bool {
+    if no_skips(dir, ns) {
+        return true;
+    }
+
+    // I said I would be lazy this year...
+    (0..ns.len())
+        .map(|i| {
+            ns.iter()
+                .enumerate()
+                .filter(|(j, _)| i != *j)
+                .map(|(_, n)| n)
+                .cloned()
+                .collect()
+        })
+        .any(|xs: Vec<i32>| no_skips(dir, &xs))
+}
+
+fn day2_part1(ls: impl Iterator<Item = String>) -> usize {
     parse_input(ls)
         .into_iter()
-        .filter(|ns| safe(1, ns) || safe(-1, ns))
-        .count() as i32
+        .filter(|ns| no_skips(1, ns.as_slice()) || no_skips(-1, ns.as_slice()))
+        .count()
+}
+
+fn day2_part2(ls: impl Iterator<Item = String>) -> usize {
+    parse_input(ls)
+        .into_iter()
+        .filter(|ns| one_skip(1, ns.as_slice()) || one_skip(-1, ns.as_slice()))
+        .count()
 }
 
 #[cfg(test)]
@@ -51,5 +82,10 @@ mod test {
     #[test]
     fn test_day2_part1() {
         assert_eq!(2, super::day2_part1(test_input()))
+    }
+
+    #[test]
+    fn test_day2_part2() {
+        assert_eq!(4, super::day2_part2(test_input()))
     }
 }
